@@ -16,66 +16,66 @@ const pubsub = new PubSub();
 
 let contractInstance = {};
 
-const getTransactionList = new Promise(function(resolve, reject) {
-  let return_txs = [];
-
-  // if (pagenum === undefined) {
-  //   pagenum = 1;
-  // }
-
-  // if (limit === undefined) {
-  //   limit = 10;
-  // }
-
-  let url = "http://api.etherscan.io/api?module=account&action=txlist&address=" + contractInstance.address + "&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=VG4EJ7WXR5P5SYPD5466QNRKEFV7T423WA"
-  request({
-    uri: url,
-    method: "GET",
-  }, function(error, response, body) {
-    if (error) {
-      reject();
-    } else {
-      let r_txs = [];
-      if (body.length > 0) {
-        r_txs = JSON.parse(body);
-        if (Array.isArray(r_txs.result) && r_txs.result.length > 0) {
-          _.each(r_txs.result, (tx) => {
-            let amount = parseFloat(tx.value) / 1e18;
-            let fee = parseFloat(tx.gasUsed) * parseFloat(tx.gasPrice) / 1e18;
-            let sender_amount = amount + fee;
-            if (tx.to.toLowerCase() == addr.toLowerCase()) {
-              return_txs.push({
-                hash: tx.hash,
-                amount: amount,
-                type: 'receive',
-                time: tx.timeStamp
-              });
-            }
-          });
+function getTransactionList() {
+  return new Promise(function(resolve, reject) {
+    let return_txs = [];
+    let url = "http://api.etherscan.io/api?module=account&action=txlist&address=" + contractInstance.address + "&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=VG4EJ7WXR5P5SYPD5466QNRKEFV7T423WA"
+    request({
+      uri: url,
+      method: "GET",
+    }, function(error, response, body) {
+      console.log("start");
+      if (error) {
+        reject();
+      } else {
+        let r_txs = [];
+        if (body.length > 0) {
+          r_txs = JSON.parse(body);
+          if (Array.isArray(r_txs.result) && r_txs.result.length > 0) {
+            r_txs.result.forEach((tx) => {
+                let amount = parseFloat(tx.value) / 1e18;
+                let fee = parseFloat(tx.gasUsed) * parseFloat(tx.gasPrice) / 1e18;
+                let sender_amount = amount + fee;
+                if (tx.to.toLowerCase() == contractInstance.address.toLowerCase()) {
+                  return_txs.push({
+                    hash: tx.hash,
+                    amount: amount,
+                    type: 'receive',
+                    time: tx.timeStamp
+                  });
+                }
+            });
+          }
         }
+        resolve(return_txs);
       }
-      resolve(return_txs);
-    }
+    });
   });
-});
+}
+
+function addSubscription() {
+  return new Promise(function(resolve, request) {
+    contractInstance.on("ValueChanged", (author, oldValue, newValue, event_eth) => {
+        let event = {
+          author: author,
+          newValue: newValue,
+          oldValue: oldValue,
+          blockNumber: event_eth.blockNumber
+        };
+        pubsub.publish('event', {
+           event:{
+               data: event
+           }
+       })
+       resolve(event);
+    });
+  });
+}
 
 // The resolvers
 const resolvers = {
   Query: {
     async contract() {
-      contractInstance.on("ValueChanged", (author, oldValue, newValue, event_eth) => {
-          let event = {
-            author: author,
-            newValue: newValue,
-            oldValue: oldValue,
-            blockNumber: event_eth.blockNumber
-          };
-          pubsub.publish('event', {
-             event:{
-                 data: event
-             }
-         })
-      });
       let amount = 0;
       let provider = new ethers.providers.EtherscanProvider();
       amount = await provider.getBalance(address);
@@ -86,15 +86,18 @@ const resolvers = {
     },
 
     async transactions() {
-      getTransactionList
-      .then(transactions => {
-        console.log(res.join());
-        return transactions.filter((transaction)=>{
-            return transactions;
-        });
-      })
-      .catch(err => console.log(err));
-    }
+      let provider = new ethers.providers.EtherscanProvider();
+      let transactionList = await getTransactionList();
+      console.log(transactionList);
+      return transactionList;
+    },
+  },
+
+  Mutation:{
+       async checkNewEvent(){
+           let event = await addSubscription();
+           return event;
+       }
   },
   Subscription:{
       event:{

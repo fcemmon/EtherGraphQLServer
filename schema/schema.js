@@ -22,7 +22,11 @@ const typeDefs = `
         contract: Contract
         transactions: [Transaction!]!
     }
-    
+
+    type Mutation {
+        checkNewEvent: Event!
+    }
+
     type Subscription {
         event: EventSubscriptionPayload!
     }
