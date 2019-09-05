@@ -13,7 +13,7 @@ const typeDefs = `
 
     type Query {
         contract: Contract
-        transactions: [Transaction!]!
+        transactions: TransactionLoaded!
     }
 
     type Mutation {
@@ -22,6 +22,12 @@ const typeDefs = `
 
     type Subscription {
         transaction: Transaction!
+        getTransactions: TransactionLoaded
+    }
+
+    type TransactionLoaded {
+        status: String
+        data: [Transaction!]
     }
 `;
 

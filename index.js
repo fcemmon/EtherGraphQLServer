@@ -1,4 +1,5 @@
 var request = require("request");
+// import ethers
 var ethers = require('ethers');
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -16,46 +17,11 @@ const pubsub = new PubSub();
 
 let contractInstance = {};
 
-function getTransactionList() {
-  return new Promise(function(resolve, reject) {
-    let return_txs = [];
-    let url = "http://api.etherscan.io/api?module=account&action=txlist&address=" + contractInstance.address + "&startblock=0&endblock=99999999&page=1&offset=1000&sort=desc&apikey=VG4EJ7WXR5P5SYPD5466QNRKEFV7T423WA"
-    request({
-      uri: url,
-      method: "GET",
-    }, function(error, response, body) {
-      console.log("start");
-      if (error) {
-        reject();
-      } else {
-        let r_txs = [];
-        if (body.length > 0) {
-          r_txs = JSON.parse(body);
-          if (Array.isArray(r_txs.result) && r_txs.result.length > 0) {
-            r_txs.result.forEach((tx) => {
-                let amount = parseFloat(tx.value) / 1e18;
-                let fee = parseFloat(tx.gasUsed) * parseFloat(tx.gasPrice) / 1e18;
-                let sender_amount = amount + fee;
-                if (tx.to.toLowerCase() == contractInstance.address.toLowerCase()) {
-                  return_txs.push({
-                    hash: tx.hash,
-                    amount: amount,
-                    type: 'receive',
-                    time: tx.timeStamp
-                  });
-                }
-            });
-          }
-        }
-        resolve(return_txs);
-      }
-    });
-  });
-}
-
 function addSubscription(transactionHash) {
   return new Promise(function(resolve, reject) {
     let provider = new ethers.providers.EtherscanProvider();
+
+    // Waiting for completing transaction
     provider.once(transactionHash, (receipt) => {
       let transaction = {
         hash: receipt.hash,
@@ -63,11 +29,15 @@ function addSubscription(transactionHash) {
         type: "receive",
         time: receipt.timeStamp
       };
-      pubsub.publish('transaction', {
+
+      // publish subscription
+      pubsub.publish('transactionChannel', {
           transaction: transaction
-      })  
+      });
+      //////////////
     });
 
+    // Get current transaction.
     let transaction = provider.getTransaction(transactionHash)
     .then(transaction => {
         console.log(transaction);
@@ -99,9 +69,37 @@ const resolvers = {
 
     async transactions() {
       let provider = new ethers.providers.EtherscanProvider();
-      let transactionList = await getTransactionList();
-      console.log(transactionList);
-      return transactionList;
+      let transactionList = provider.getHistory(contractInstance.address)
+      .then(history => {
+        let return_txs = [];
+        history.forEach((tx) => {
+          let amount = parseFloat(tx.value) / 1e18;
+            let fee = parseFloat(tx.gasUsed) * parseFloat(tx.gasPrice) / 1e18;
+            let sender_amount = amount + fee;
+            if (tx.to != null && tx.to.toLowerCase() == contractInstance.address.toLowerCase()) {
+              return_txs.push({
+                hash: tx.hash,
+                amount: amount,
+                type: 'receive',
+                time: tx.timeStamp
+              });
+            }
+        });
+
+        // publish subscription
+        let status = "loaded"
+        pubsub.publish('transactionListChannel', {
+            getTransactions: {
+                status:status,
+                data:return_txs
+            }
+        });
+      });
+
+      return {
+        status:"loading",
+        data:[]
+      };
     },
   },
 
@@ -114,8 +112,13 @@ const resolvers = {
   Subscription:{
       transaction:{
           subscribe(){
-              return pubsub.asyncIterator('transaction')
+              return pubsub.asyncIterator('transactionChannel')
           }
+      },
+      getTransactions:{
+        subscribe(){
+          return pubsub.asyncIterator('transactionListChannel')
+        }
       }
   }
 };
