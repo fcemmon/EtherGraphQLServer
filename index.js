@@ -53,21 +53,16 @@ function getTransactionList() {
   });
 }
 
-function addSubscription() {
+function addSubscription(transactionHash) {
   return new Promise(function(resolve, request) {
-    contractInstance.on("ValueChanged", (author, oldValue, newValue, event_eth) => {
-        let event = {
-          author: author,
-          newValue: newValue,
-          oldValue: oldValue,
-          blockNumber: event_eth.blockNumber
-        };
-        pubsub.publish('event', {
-           event:{
-               data: event
-           }
-       })
-       resolve(event);
+    let provider = new ethers.providers.EtherscanProvider();
+    provider.getTransaction(transactionHash).then((transaction) => {
+        console.log(transaction);
+    });
+
+    provider.getTransactionReceipt(transactionHash).then((receipt) => {
+        console.log(receipt);
+        resolve("success");
     });
   });
 }
@@ -94,9 +89,9 @@ const resolvers = {
   },
 
   Mutation:{
-       async checkNewEvent(){
-           let event = await addSubscription();
-           return event;
+       async checkNewEvent(transactionHash){
+           let status = await addSubscription(transactionHash);
+           return status;
        }
   },
   Subscription:{

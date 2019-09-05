@@ -11,20 +11,13 @@ const typeDefs = `
         time: String
     }
 
-    type Event {
-        author: String
-        newValue: String
-        oldValue: String
-        blockNumber: String
-    }
-
     type Query {
         contract: Contract
         transactions: [Transaction!]!
     }
 
     type Mutation {
-        checkNewEvent: Event!
+        checkNewEvent(transactionHash:String): String!
     }
 
     type Subscription {
@@ -32,7 +25,7 @@ const typeDefs = `
     }
 
     type EventSubscriptionPayload {
-        data: Event!
+        data: String!
     }
 `;
 
