@@ -54,17 +54,27 @@ function getTransactionList() {
 }
 
 function addSubscription(transactionHash) {
-  return new Promise(function(resolve, request) {
-    let provider = new ethers.providers.EtherscanProvider();
-    provider.getTransaction(transactionHash).then((transaction) => {
-        console.log(transaction);
+  let provider = new ethers.providers.EtherscanProvider();
+  let transactionResponse = provider.getTransaction(transactionHash);
+  provider.once(transactionHash, (receipt) => {
+      let transaction = {
+        hash: receipt.hash,
+        amount: receipt.value,
+        type: "receive",
+        time: receipt.timeStamp
+      };
+      pubsub.publish('transaction', {
+          transaction: transaction
+      })  
     });
 
-    provider.getTransactionReceipt(transactionHash).then((receipt) => {
-        console.log(receipt);
-        resolve("success");
-    });
-  });
+  let transaction = {
+    hash: transactionHash,
+    amount: transactionResponse.value,
+    type: "receive",
+    time: transactionResponse.timeStamp
+  }
+  return transaction;
 }
 
 // The resolvers
@@ -89,15 +99,15 @@ const resolvers = {
   },
 
   Mutation:{
-       async checkNewEvent(transactionHash){
-           let status = await addSubscription(transactionHash);
-           return status;
+       checkNewEvent(obj, args, context){
+           let transaction = addSubscription(args.transactionHash);
+           return transaction;
        }
   },
   Subscription:{
-      event:{
+      transaction:{
           subscribe(){
-              return pubsub.asyncIterator('event')
+              return pubsub.asyncIterator('transaction')
           }
       }
   }
