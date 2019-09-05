@@ -10,7 +10,7 @@ const { address, ABI } = require("./constants/defaultConstant");
 const typeDefs = require("./schema/schema");
 const { getContract } = require("./contract/getContract");
 
-const { PubSub } = require('graphql-yoga');
+const { GraphQLServer, PubSub } = require('graphql-yoga');
 
 const pubsub = new PubSub();
 
@@ -46,9 +46,9 @@ const getTransactionList = new Promise(function(resolve, reject) {
             if (tx.to.toLowerCase() == addr.toLowerCase()) {
               return_txs.push({
                 hash: tx.hash,
-                type: 'receive',
-                time: tx.timeStamp,
                 amount: amount,
+                type: 'receive',
+                time: tx.timeStamp
               });
             }
           });
@@ -66,8 +66,8 @@ const resolvers = {
       contractInstance.on("ValueChanged", (author, oldValue, newValue, event_eth) => {
           let event = {
             author: author,
-            oldValue: oldValue,
             newValue: newValue,
+            oldValue: oldValue,
             blockNumber: event_eth.blockNumber
           };
           pubsub.publish('event', {
@@ -85,7 +85,7 @@ const resolvers = {
       };
     },
 
-    transctions() {
+    async transactions() {
       getTransactionList
       .then(transactions => {
         console.log(res.join());
@@ -96,36 +96,56 @@ const resolvers = {
       .catch(err => console.log(err));
     }
   },
-
-  Subscriptions:{
+  Subscription:{
       event:{
-          subscribe(parent, args, ctx, info){
-              return ctx.pubsub.asyncIterator('event')
+          subscribe(){
+              return pubsub.asyncIterator('event')
           }
       }
   }
 };
 
 // Put together a schema
-const schema = makeExecutableSchema({
-  typeDefs,
-  resolvers
+// const schema = makeExecutableSchema({
+//   typeDefs,
+//   resolvers,
+
+// });
+const server  = new GraphQLServer({
+    typeDefs,
+    resolvers,
+    context:{
+        pubsub
+    }
 });
 
-// Initialize the app
-const app = express();
-const PORT = 4000;
+const options = {
+    port: 4000   
+  }
 
-// The GraphQL endpoint
-app.use("/graphql", bodyParser.json(), graphqlExpress({ schema }));
+server.start(options, ({ port }) =>
+  {
+    console.log("Go to http://localhost:4000/ to run queries!");
+    getContract
+      .then(res => (contractInstance = res))
+      .catch(err => console.log(err));
+  }
+)
 
-// GraphiQL, a visual editor for queries
-app.use("/graphiql", graphiqlExpress({ endpointURL: "/graphql" }));
+// // Initialize the app
+// const app = express();
+// const PORT = 4000;
 
-// Start the server and get contract instance
-app.listen(PORT, () => {
-  console.log("Go to http://localhost:4000/graphiql to run queries!");
-  getContract
-    .then(res => (contractInstance = res))
-    .catch(err => console.log(err));
-});
+// // The GraphQL endpoint
+// app.use("/graphql", bodyParser.json(), graphqlExpress({ schema }));
+
+// // GraphiQL, a visual editor for queries
+// app.use("/graphiql", graphiqlExpress({ endpointURL: "/graphql" }));
+
+// // Start the server and get contract instance
+// app.listen(PORT, () => {
+//   console.log("Go to http://localhost:4000/graphiql to run queries!");
+//   getContract
+//     .then(res => (contractInstance = res))
+//     .catch(err => console.log(err));
+// });

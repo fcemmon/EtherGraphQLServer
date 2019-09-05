@@ -1,25 +1,25 @@
 const typeDefs = `
     type Contract {
-        address: String!,
+        address: String!
         amount: Int    
     }
 
     type Transaction {
-        hash: String,
-        amount: Int,
-        type: String,
+        hash: String
+        amount: Int
+        type: String
         time: String
     }
 
     type Event {
-        author:String,
-        newValue: String,
-        oldValue: String,
+        author: String
+        newValue: String
+        oldValue: String
         blockNumber: String
     }
 
     type Query {
-        contract: Contract,
+        contract: Contract
         transactions: [Transaction!]!
     }
     
@@ -30,7 +30,6 @@ const typeDefs = `
     type EventSubscriptionPayload {
         data: Event!
     }
-
 `;
 
 module.exports = typeDefs;
