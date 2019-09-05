@@ -63,7 +63,7 @@ const getTransactionList = new Promise(function(resolve, reject) {
 const resolvers = {
   Query: {
     async contract() {
-      contract.on("ValueChanged", (author, oldValue, newValue, event_eth) => {
+      contractInstance.on("ValueChanged", (author, oldValue, newValue, event_eth) => {
           let event = {
             author: author,
             oldValue: oldValue,
@@ -72,7 +72,6 @@ const resolvers = {
           };
           pubsub.publish('event', {
              event:{
-                 mutation: 'DELETED',
                  data: event
              }
          })
@@ -99,12 +98,12 @@ const resolvers = {
   },
 
   Subscriptions:{
-        event:{
-            subscribe(parent, args, ctx, info){
-                return ctx.pubsub.asyncIterator('event')
-            }
-        }
-    },
+      event:{
+          subscribe(parent, args, ctx, info){
+              return ctx.pubsub.asyncIterator('event')
+          }
+      }
+  }
 };
 
 // Put together a schema
