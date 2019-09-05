@@ -1,25 +1,36 @@
 const typeDefs = `
     type Contract {
         address: String!,
-        amount: Int,
-        totalSupply: Int
+        amount: Int    
     }
 
     type Transaction {
-    	hash: String!,
-    	type: String!,
-    	time: String!,
-        amount: Int
+        hash: String,
+        amount: Int,
+        type: String,
+        time: String
+    }
+
+    type Event {
+        author:String,
+        newValue: String,
+        oldValue: String,
+        blockNumber: String
     }
 
     type Query {
-        contract: Contract!
-        transctions: [Transaction!]
+        contract: Contract,
+        transactions: [Transaction!]!
+    }
+    
+    type Subscription {
+        event: EventSubscriptionPayload!
     }
 
-    type Mutation {
-        donate(amount: Int!): Contract!
+    type EventSubscriptionPayload {
+        data: Event!
     }
+
 `;
 
 module.exports = typeDefs;

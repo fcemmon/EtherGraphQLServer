@@ -1,6 +1,5 @@
 var Q = require('q');
 var ethers = require('ethers');
-const contractService = require("../contracts/getContract.js");
 var ETHWallet = ethers.Wallet;
 var provider = ethers.getDefaultProvider();
 
@@ -25,7 +24,7 @@ function getBalance(addr) {
 	contractService.getContract()
     .then(res => {
     	contractInstance = res;
-    	provider.getBalance(contractInstance.address)
+    	contractInstance.methods.checkContractBalance().call()
         .then(bal => {
         	let balance = bal / 1000000000000000000
         	deferred.resolve({address: "contractInstance.address", balance:0});
