@@ -19,16 +19,19 @@ let contractInstance = {};
 
 function findTxnForPending() {
   return new Promise(function(resolve, reject) {
-    let provider = new ethers.providers.EtherscanProvider();
-    provider.on('pending', (transactionHash) => {
-        resolve(transactionHash);
+    contractInstance.on("Transfer", (from, to, value, event) => {
+        console.log(from,to,value);
+        console.log(event.blockNumber);
+        if (to == contractInstance.address) {
+          resolve(event.transactionHash);
+        }
     });
   });
 }
 
 function addSubscription(transactionHash) {
   return new Promise(function(resolve, reject) {
-    let provider = new ethers.providers.EtherscanProvider();
+    let provider = ethers.getDefaultProvider('ropsten');
 
     // Waiting for completing transaction
     provider.once(transactionHash, (receipt) => {

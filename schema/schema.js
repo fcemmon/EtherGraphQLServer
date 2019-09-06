@@ -17,7 +17,7 @@ const typeDefs = `
     }
 
     type Mutation {
-        checkNewEvent: Transaction
+        checkNewEvent: TransactionPublished
     }
 
     type Subscription {
