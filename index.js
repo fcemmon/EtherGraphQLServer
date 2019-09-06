@@ -4,18 +4,27 @@ var ethers = require('ethers');
 const express = require("express");
 const bodyParser = require("body-parser");
 const { graphqlExpress, graphiqlExpress } = require("apollo-server-express");
-const { makeExecutableSchema } = require("graphql-tools");
-const eth = require('./eth.js');
+const { makeExecutableSchema, mergeSchemas } = require("graphql-tools");
+const { GraphQLSchema } = require('graphql');
 const { address, ABI } = require("./constants/defaultConstant");
 
 const typeDefs = require("./schema/schema");
 const { getContract } = require("./contract/getContract");
 
-const { GraphQLServer, PubSub } = require('graphql-yoga');
+const { ApolloServer, PubSub } = require("apollo-server");
 
 const pubsub = new PubSub();
 
 let contractInstance = {};
+
+function findTxnForPending() {
+  return new Promise(function(resolve, reject) {
+    let provider = new ethers.providers.EtherscanProvider();
+    provider.on('pending', (transactionHash) => {
+        resolve(transactionHash);
+    });
+  });
+}
 
 function addSubscription(transactionHash) {
   return new Promise(function(resolve, reject) {
@@ -32,7 +41,10 @@ function addSubscription(transactionHash) {
 
       // publish subscription
       pubsub.publish('transactionChannel', {
-          transaction: transaction
+          transaction: {
+              status:"received",
+              data:transactionData
+          }
       });
       //////////////
     });
@@ -48,7 +60,10 @@ function addSubscription(transactionHash) {
           type: "receive",
           time: transaction.timeStamp
         }
-
+        let transactionPublished = {
+          status:"pending",
+          data:transactionData
+        }
         resolve(transactionData);
     })
   });
@@ -86,6 +101,8 @@ const resolvers = {
             }
         });
 
+        console.log("loaded");
+
         // publish subscription
         let status = "loaded"
         pubsub.publish('transactionListChannel', {
@@ -104,8 +121,9 @@ const resolvers = {
   },
 
   Mutation:{
-       async checkNewEvent(obj, args, context){
-           let transaction = await addSubscription(args.transactionHash);
+       async checkNewEvent(){
+           let transactionHash = await findTxnForPending();
+           let transaction = await addSubscription(transactionHash);
            return transaction;
        }
   },
@@ -123,32 +141,21 @@ const resolvers = {
   }
 };
 
-// Put together a schema
-// const schema = makeExecutableSchema({
-//   typeDefs,
-//   resolvers,
-
-// });
-const server  = new GraphQLServer({
-    typeDefs,
-    resolvers,
-    context:{
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+  context:{
         pubsub
     }
 });
 
-const options = {
-    port: 4000   
-  }
-
-server.start(options, ({ port }) =>
-  {
-    console.log("Go to http://localhost:4000/ to run queries!");
-    getContract
-      .then(res => (contractInstance = res))
-      .catch(err => console.log(err));
-  }
-)
+server.listen().then(({ url, subscriptionsUrl }) => {
+  console.log(`🚀 Server ready at ${url}`);
+  console.log(`🚀 Subscriptions ready at ${subscriptionsUrl}`);
+  getContract
+  .then(res => (contractInstance = res))
+  .catch(err => console.log(err));
+});
 
 // // Initialize the app
 // const app = express();

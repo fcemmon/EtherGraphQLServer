@@ -17,12 +17,17 @@ const typeDefs = `
     }
 
     type Mutation {
-        checkNewEvent(transactionHash:String): Transaction
+        checkNewEvent: Transaction
     }
 
     type Subscription {
-        transaction: Transaction!
+        transaction: TransactionPublished!
         getTransactions: TransactionLoaded
+    }
+
+    type TransactionPublished {
+        status:String
+        data: Transaction
     }
 
     type TransactionLoaded {
