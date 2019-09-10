@@ -1,12 +1,14 @@
-const typeDefs = `
+import { gql } from 'apollo-server'
+
+export const typeDefs = gql`
     type Contract {
         address: String!
-        amount: Int    
+        amount: Float    
     }
 
     type Transaction {
         hash: String
-        amount: Int
+        amount: Float
         type: String
         time: String
     }
@@ -20,11 +22,6 @@ const typeDefs = `
         checkNewEvent: TransactionPublished
     }
 
-    type Subscription {
-        transaction: TransactionPublished!
-        getTransactions: TransactionLoaded
-    }
-
     type TransactionPublished {
         status:String
         data: Transaction
@@ -34,6 +31,9 @@ const typeDefs = `
         status: String
         data: [Transaction!]
     }
-`;
 
-module.exports = typeDefs;
+    type Subscription {
+        transaction: TransactionPublished
+        getTransactions: TransactionLoaded
+    }
+`;
